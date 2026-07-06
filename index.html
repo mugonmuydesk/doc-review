@@ -130,7 +130,7 @@ async function saveReview(){ const d=await F.dir.getDirectoryHandle(F.pkg); cons
 
 // ---------- boot ----------
 async function boot(){
-  if(!window.showDirectoryPicker){ $('#app').innerHTML='<div class="gatepad"><div class="lock">âš ï¸</div><p>This tool needs Chrome or Edge (desktop). Please open the link in one of those.</p></div>'; return; }
+  if(!window.showDirectoryPicker){ $('#app').innerHTML='<div class="gatepad"><div class="lock">⚠️</div><p>This tool needs Chrome or Edge (desktop). Please open the link in one of those.</p></div>'; return; }
   const {k,pkg}=parseHash();
   if(!k || (await sha256hex(k))!==EXPECTED_HASH){ showLocked(); return; }
   F.wantPkg = pkg;
@@ -144,12 +144,12 @@ async function boot(){
   }
   showFolderGate(null);
 }
-function showLocked(){ $('#app').innerHTML='<div class="gatepad"><div class="lock">ðŸ”’</div><p>This link isnâ€™t active.</p></div>'; }
+function showLocked(){ $('#app').innerHTML='<div class="gatepad"><div class="lock">🔒</div><p>This link isn’t active.</p></div>'; }
 function showFolderGate(remembered){
-  const label = remembered ? 'Reconnect â€œ'+esc(remembered.name)+'â€' : 'Open your reviews folder';
+  const label = remembered ? 'Reconnect “'+esc(remembered.name)+'”' : 'Open your reviews folder';
   $('#app').innerHTML = `<div class="gatepad">
       <h2>Document review</h2>
-      <p>Your documents stay on this computer â€” nothing is uploaded. Choose your reviews folder to begin.</p>
+      <p>Your documents stay on this computer — nothing is uploaded. Choose your reviews folder to begin.</p>
       <button class="bigbtn" id="pick">${label}</button>
       ${remembered?'<button class="linkbtn" id="other">Choose a different folder</button>':''}
       <div class="localnote">All reading and writing happens locally in your browser. This page never sends your files anywhere.</div>
@@ -175,7 +175,7 @@ function renderPicker(){
   if(!list.length){ $('#app').innerHTML='<div class="gatepad"><h2>No reviews found</h2><p>This folder has no review packages yet. When an agent prepares one, it appears here. <button class="linkbtn" onclick="pickFolder()">Choose a different folder</button></p></div>'; return; }
   $('#app').innerHTML='<div id="picker"><h2>Document reviews</h2><table><thead><tr><th>Review</th><th>Documents</th><th>Pending</th><th></th></tr></thead><tbody>'+
     list.map(p=>`<tr onclick="loadPkg('${p.pkg}')"><td><b>${esc(p.name)}</b></td><td>${p.docs}</td><td>${p.pending} / ${p.flags}</td><td>Open &rsaquo;</td></tr>`).join('')+
-    '</tbody></table><p style="color:var(--muted);font-size:12px;margin-top:14px">Files stay on this PC â€” nothing is uploaded.</p></div>';
+    '</tbody></table><p style="color:var(--muted);font-size:12px;margin-top:14px">Files stay on this PC — nothing is uploaded.</p></div>';
 }
 async function loadPkg(pkg){
   F.pkg=pkg;
@@ -194,7 +194,7 @@ function render(){
   const c=counts(); const pct=c.flags?Math.round(c.done/c.flags*100):0;
   $('#app').innerHTML = `
    <header>
-     <span class="title">ðŸ“„ ${esc(F.review.name)}</span>
+     <span class="title">📄 ${esc(F.review.name)}</span>
      <span class="pill" onclick="backToPicker()">All reviews</span>
      <span class="prog"><span>${c.done} / ${c.flags} reviewed</span><span class="bar"><i style="width:${pct}%"></i></span></span>
    </header>
@@ -215,14 +215,14 @@ function render(){
 function renderDocs(){
   const items=F.review.documents.map((d,i)=>{
     const fs=d.flags||[];
-    const pips=fs.map(f=>({pending:'â—',accepted:'âœ“',rejected:'âœ—',commented:'âœŽ'}[f.status]||'â—')).join(' ');
-    return `<li class="${i===F.di?'cur':''}" onclick="gotoDoc(${i})"><span class="dt">${esc(d.title)}</span><span class="pips">${pips||'â€”'}</span></li>`;
+    const pips=fs.map(f=>({pending:'●',accepted:'✓',rejected:'✗',commented:'✎'}[f.status]||'●')).join(' ');
+    return `<li class="${i===F.di?'cur':''}" onclick="gotoDoc(${i})"><span class="dt">${esc(d.title)}</span><span class="pips">${pips||'—'}</span></li>`;
   }).join('');
   return `<h3>Documents (${F.di+1}/${F.review.documents.length})</h3><ul class="doclist">${items}</ul>
     <div class="legend"><b>Flags</b><br>
-      <span style="color:var(--editb)">â–</span> Edit (agent) &nbsp; <span style="color:var(--cpb)">â–</span> Counterparty<br>
-      <span style="color:var(--hlb)">â–</span> Highlight / query<br><br>
-      â— pending &nbsp; âœ“ accepted<br>âœ— rejected &nbsp; âœŽ w/ comment</div>`;
+      <span style="color:var(--editb)">▍</span> Edit (agent) &nbsp; <span style="color:var(--cpb)">▍</span> Counterparty<br>
+      <span style="color:var(--hlb)">▍</span> Highlight / query<br><br>
+      ● pending &nbsp; ✓ accepted<br>✗ rejected &nbsp; ✎ w/ comment</div>`;
 }
 function renderDocBody(){
   const d=curDoc(); const flags=curFlags(); const byBlock={};
@@ -233,20 +233,20 @@ function renderDocBody(){
       bf.forEach(({f,idx})=>{
         const cls=`flag ${f.type} ${idx===F.fi?'cur':''} done-${f.status!=='pending'?f.status:''}`.trim();
         if(f.quote && text.includes(esc(f.quote))){ text=text.replace(esc(f.quote), `<mark class="${cls}" onclick="gotoFlag(${idx})">${esc(f.quote)}</mark>`); }
-        else { text += ` <span class="pill" onclick="gotoFlag(${idx})">âš‘ flag ${idx+1}</span>`; }
+        else { text += ` <span class="pill" onclick="gotoFlag(${idx})">⚑ flag ${idx+1}</span>`; }
       });
     }
     const bstyle=bf?bf[0].f.type:'';
     const border=bf?`border-left-color:var(--${bstyle==='counterparty'?'cpb':bstyle==='highlight'?'hlb':'editb'})`:'';
     return `<p class="blk ${b.style||'normal'}${flaggedClass}" style="${border}">${text}</p>`;
   }).join('');
-  return `<h1 class="docname">${esc(d.title)} &nbsp;<span style="color:var(--muted);font-weight:400;font-size:13px">â€” ${flags.length} flag(s)</span></h1>${html||'<i>(no content)</i>'}`;
+  return `<h1 class="docname">${esc(d.title)} &nbsp;<span style="color:var(--muted);font-weight:400;font-size:13px">— ${flags.length} flag(s)</span></h1>${html||'<i>(no content)</i>'}`;
 }
 function renderDetail(){
   const flags=curFlags();
   if(!flags.length) return `<div class="box"><h3>No flags</h3><p style="color:var(--muted)">Nothing flagged here. Use <b>Next doc</b>.</p></div>`;
   const f=curFlag();
-  const labels=f.type==='highlight'?{a:'âœ“ Looks right',r:'âœ— No â€” change it',c:'âœŽ Respond with instruction'}:{a:'âœ“ Accept',r:'âœ— Reject',c:'âœŽ Accept with comment'};
+  const labels=f.type==='highlight'?{a:'✓ Looks right',r:'✗ No — change it',c:'✎ Respond with instruction'}:{a:'✓ Accept',r:'✗ Reject',c:'✎ Accept with comment'};
   const typeName={edit:'Edit (agent redline)',highlight:'Highlight / query',counterparty:'Counterparty change'}[f.type]||f.type;
   let ba='';
   if(f.type==='highlight'){ ba=`<div class="kv"><div class="k">Agent's point</div><div class="note">${esc(f.note||'')}</div></div>`; }
@@ -259,16 +259,16 @@ function renderDetail(){
       <button class="navbtn" onclick="stepFlag(1)" ${F.fi>=flags.length-1?'disabled':''}>&#9654;</button>
       <span style="align-self:center;color:var(--muted)"> flag</span>
     </div>
-    <div class="kv"><span class="badge ${f.type}">${typeName}</span>${f.author?`<span style="color:var(--muted);font-size:12px"> Â· ${esc(f.author)}</span>`:''}</div>
-    <div class="kv"><div class="k">Where</div>${esc(f.where||'â€”')}</div>
+    <div class="kv"><span class="badge ${f.type}">${typeName}</span>${f.author?`<span style="color:var(--muted);font-size:12px"> · ${esc(f.author)}</span>`:''}</div>
+    <div class="kv"><div class="k">Where</div>${esc(f.where||'—')}</div>
     ${ba}
-    <div class="kv"><div class="k">Status</div><span class="status ${st}">${st.toUpperCase()}</span>${f.comment?` â€” â€œ${esc(f.comment)}â€`:''}</div>
+    <div class="kv"><div class="k">Status</div><span class="status ${st}">${st.toUpperCase()}</span>${f.comment?` — “${esc(f.comment)}”`:''}</div>
     <div class="actions">
       <button class="act accept ${st==='accepted'?'sel':''}" onclick="decide('accepted')">${labels.a}</button>
       <button class="act reject ${st==='rejected'?'sel':''}" onclick="decide('rejected')">${labels.r}</button>
       <button class="act comment ${st==='commented'?'sel':''}" onclick="toggleComment()">${labels.c}</button>
       <div id="cbox" style="display:${st==='commented'?'block':'none'}">
-        <textarea id="ctext" placeholder="Your comment / instructionâ€¦">${esc(f.comment||'')}</textarea>
+        <textarea id="ctext" placeholder="Your comment / instruction…">${esc(f.comment||'')}</textarea>
         <button class="navbtn" style="margin-top:6px" onclick="submitComment()">Save comment &amp; next</button>
       </div>
     </div>
