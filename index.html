@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Doc Review</title>
+<style>
+  :root {
+    --bg:#f4f5f7; --panel:#fff; --line:#dfe3e8; --ink:#1c2430; --muted:#6b7684;
+    --accent:#2f6feb; --accept:#1f9d55; --reject:#d33a3a; --comment:#b8860b;
+    --edit:#eef4ff; --hl:#fff6db; --cp:#fdeef4; --editb:#2f6feb; --hlb:#d9a400; --cpb:#c2418a;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; font-family:Segoe UI,system-ui,Arial,sans-serif; color:var(--ink); background:var(--bg); font-size:14px; }
+  #app { display:flex; flex-direction:column; height:100vh; }
+  header { display:flex; align-items:center; gap:12px; padding:8px 14px; background:var(--panel); border-bottom:1px solid var(--line); }
+  header .title { font-weight:600; }
+  header .prog { margin-left:auto; display:flex; align-items:center; gap:8px; color:var(--muted); font-size:13px; }
+  .bar { width:160px; height:8px; background:var(--line); border-radius:6px; overflow:hidden; }
+  .bar > i { display:block; height:100%; background:var(--accept); }
+  main { flex:1; display:grid; grid-template-columns:220px 1fr 340px; min-height:0; }
+  .col { min-height:0; overflow:auto; background:var(--panel); }
+  .col.docs { border-right:1px solid var(--line); }
+  .col.detail { border-left:1px solid var(--line); }
+  .col.doc { background:var(--bg); }
+  footer { display:flex; align-items:center; gap:14px; padding:7px 14px; background:var(--panel); border-top:1px solid var(--line); color:var(--muted); font-size:13px; }
+  .docs h3, .detail h3 { font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:14px 12px 6px; }
+  .doclist { list-style:none; margin:0; padding:0 6px; }
+  .doclist li { padding:8px 8px; border-radius:6px; cursor:pointer; display:flex; flex-direction:column; gap:3px; }
+  .doclist li:hover { background:var(--bg); }
+  .doclist li.cur { background:#e9f0ff; }
+  .doclist .dt { font-weight:500; }
+  .pips { font-size:12px; letter-spacing:1px; }
+  .legend { margin:12px; font-size:12px; color:var(--muted); line-height:1.7; }
+  .docwrap { max-width:820px; margin:0 auto; padding:26px 30px 120px; }
+  .docwrap h1.docname { font-size:16px; margin:0 0 18px; padding-bottom:8px; border-bottom:1px solid var(--line); }
+  .blk { line-height:1.55; margin:0 0 10px; white-space:pre-wrap; }
+  .blk.heading1 { font-weight:700; font-size:15px; margin-top:18px; }
+  .blk.heading2 { font-weight:600; margin-top:14px; }
+  .blk.flagged { border-left:3px solid transparent; padding-left:10px; margin-left:-13px; }
+  mark.flag { padding:1px 2px; border-radius:3px; cursor:pointer; border-bottom:2px solid transparent; }
+  mark.flag.edit { background:var(--edit); border-color:var(--editb); }
+  mark.flag.highlight { background:var(--hl); border-color:var(--hlb); }
+  mark.flag.counterparty { background:var(--cp); border-color:var(--cpb); }
+  mark.flag.cur { outline:2px solid var(--accent); outline-offset:1px; }
+  mark.flag.done-accepted { opacity:.55; }
+  mark.flag.done-rejected { opacity:.55; text-decoration:line-through; }
+  del { color:var(--reject); text-decoration:line-through; }
+  ins { color:var(--accept); text-decoration:underline; }
+  .pill { display:inline-block; font-size:11px; padding:0 6px; border-radius:10px; background:#e7ebf0; color:var(--muted); margin-left:6px; cursor:pointer; }
+  .detail .box { padding:12px 14px; }
+  .kv { margin:0 0 8px; }
+  .kv .k { color:var(--muted); font-size:12px; }
+  .badge { display:inline-block; font-size:11px; font-weight:600; padding:2px 8px; border-radius:10px; }
+  .badge.edit { background:var(--edit); color:var(--editb); }
+  .badge.highlight { background:var(--hl); color:#8a6d00; }
+  .badge.counterparty { background:var(--cp); color:var(--cpb); }
+  .ba { background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:8px 10px; margin:4px 0; }
+  .ba del, .ba ins { display:block; }
+  .note { background:#fffdf5; border:1px solid #f0e6c0; border-radius:6px; padding:10px; line-height:1.5; }
+  .status { font-weight:600; }
+  .status.accepted { color:var(--accept); } .status.rejected { color:var(--reject); }
+  .status.commented { color:var(--comment); } .status.pending { color:var(--muted); }
+  .actions { display:flex; flex-direction:column; gap:8px; margin-top:14px; }
+  button.act { border:1px solid var(--line); background:#fff; border-radius:7px; padding:9px 12px; font-size:14px; cursor:pointer; text-align:left; }
+  button.act:hover { background:var(--bg); }
+  button.act.accept { border-color:var(--accept); color:var(--accept); }
+  button.act.reject { border-color:var(--reject); color:var(--reject); }
+  button.act.comment { border-color:var(--comment); color:var(--comment); }
+  button.act.sel { color:#fff; }
+  button.act.accept.sel { background:var(--accept); } button.act.reject.sel { background:var(--reject); } button.act.comment.sel { background:var(--comment); }
+  textarea { width:100%; min-height:64px; border:1px solid var(--line); border-radius:6px; padding:8px; font-family:inherit; font-size:13px; resize:vertical; margin-top:8px; }
+  .navbtn { border:1px solid var(--line); background:#fff; border-radius:6px; padding:5px 12px; cursor:pointer; }
+  .navbtn:hover { background:var(--bg); } .navbtn:disabled { opacity:.4; cursor:default; }
+  .spacer { flex:1; } .kbd { font-family:Consolas,monospace; background:var(--bg); border:1px solid var(--line); border-radius:4px; padding:0 5px; }
+  #picker { padding:40px; max-width:720px; margin:0 auto; }
+  #picker table { width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  #picker th, #picker td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--line); }
+  #picker tr:hover td { background:var(--bg); cursor:pointer; }
+  .flash { position:fixed; bottom:54px; left:50%; transform:translateX(-50%); background:#1c2430; color:#fff; padding:8px 16px; border-radius:20px; opacity:0; transition:opacity .2s; font-size:13px; }
+  .flash.show { opacity:.95; }
+  .gatepad { max-width:520px; margin:12vh auto; text-align:center; padding:0 24px; }
+  .gatepad h2 { margin-bottom:6px; }
+  .gatepad p { color:var(--muted); line-height:1.6; }
+  .gatepad .lock { font-size:40px; opacity:.35; margin-bottom:10px; }
+  .bigbtn { margin-top:18px; border:1px solid var(--accent); background:var(--accent); color:#fff; border-radius:8px; padding:12px 22px; font-size:15px; cursor:pointer; }
+  .bigbtn:hover { filter:brightness(1.05); }
+  .linkbtn { display:block; margin:12px auto 0; background:none; border:none; color:var(--accent); cursor:pointer; font-size:13px; text-decoration:underline; }
+  .localnote { margin-top:26px; font-size:12px; color:var(--muted); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="flash" id="flash"></div>
+<script>
+const EXPECTED_HASH = "975b606afa310c48e9d2c2d756548ffcb1cf31c8fe97f83821a974dba96ac3a9";
+const F = { picker:null, pkg:null, review:null, di:0, fi:0, dir:null, wantPkg:null };
+const $ = (s,el=document)=>el.querySelector(s);
+const esc = s => (s||'').replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const flash = m => { const f=$('#flash'); f.textContent=m; f.classList.add('show'); clearTimeout(F._t); F._t=setTimeout(()=>f.classList.remove('show'),1400); };
+
+// ---------- gate ----------
+async function sha256hex(s){ const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join(''); }
+function parseHash(){ const h=new URLSearchParams(location.hash.replace(/^#/,'')); return { k:h.get('k'), pkg:h.get('pkg') }; }
+
+// ---------- IndexedDB (remember the chosen folder) ----------
+function idb(){ return new Promise((res,rej)=>{ const r=indexedDB.open('docreview',1); r.onupgradeneeded=()=>r.result.createObjectStore('kv'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+async function idbGet(k){ const db=await idb(); return new Promise((res,rej)=>{ const t=db.transaction('kv','readonly').objectStore('kv').get(k); t.onsuccess=()=>res(t.result); t.onerror=()=>rej(t.error); }); }
+async function idbSet(k,v){ const db=await idb(); return new Promise((res,rej)=>{ const t=db.transaction('kv','readwrite').objectStore('kv').put(v,k); t.onsuccess=()=>res(); t.onerror=()=>rej(t.error); }); }
+
+// ---------- local file I/O (File System Access API) ----------
+async function listPackages(){
+  const out=[];
+  for await (const [name,handle] of F.dir.entries()){
+    if(handle.kind!=='directory') continue;
+    try {
+      const fh=await handle.getFileHandle('review.json');
+      const r=JSON.parse(await (await fh.getFile()).text());
+      let flags=0,pending=0;
+      (r.documents||[]).forEach(d=>(d.flags||[]).forEach(f=>{flags++; if(f.status==='pending')pending++;}));
+      out.push({pkg:name, name:r.name||name, docs:(r.documents||[]).length, flags, pending});
+    } catch(e){}
+  }
+  out.sort((a,b)=>a.name.localeCompare(b.name));
+  return out;
+}
+async function loadReview(pkg){ const d=await F.dir.getDirectoryHandle(pkg); const fh=await d.getFileHandle('review.json'); return JSON.parse(await (await fh.getFile()).text()); }
+async function saveReview(){ const d=await F.dir.getDirectoryHandle(F.pkg); const fh=await d.getFileHandle('review.json',{create:false}); const w=await fh.createWritable(); await w.write(JSON.stringify(F.review,null,2)); await w.close(); }
+
+// ---------- boot ----------
+async function boot(){
+  if(!window.showDirectoryPicker){ $('#app').innerHTML='<div class="gatepad"><div class="lock">âš ï¸</div><p>This tool needs Chrome or Edge (desktop). Please open the link in one of those.</p></div>'; return; }
+  const {k,pkg}=parseHash();
+  if(!k || (await sha256hex(k))!==EXPECTED_HASH){ showLocked(); return; }
+  F.wantPkg = pkg;
+  let handle=null;
+  try { handle=await idbGet('dir'); } catch(e){}
+  if(handle){
+    let perm='prompt';
+    try { perm=await handle.queryPermission({mode:'readwrite'}); } catch(e){}
+    if(perm==='granted'){ F.dir=handle; return afterFolder(); }
+    return showFolderGate(handle);
+  }
+  showFolderGate(null);
+}
+function showLocked(){ $('#app').innerHTML='<div class="gatepad"><div class="lock">ðŸ”’</div><p>This link isnâ€™t active.</p></div>'; }
+function showFolderGate(remembered){
+  const label = remembered ? 'Reconnect â€œ'+esc(remembered.name)+'â€' : 'Open your reviews folder';
+  $('#app').innerHTML = `<div class="gatepad">
+      <h2>Document review</h2>
+      <p>Your documents stay on this computer â€” nothing is uploaded. Choose your reviews folder to begin.</p>
+      <button class="bigbtn" id="pick">${label}</button>
+      ${remembered?'<button class="linkbtn" id="other">Choose a different folder</button>':''}
+      <div class="localnote">All reading and writing happens locally in your browser. This page never sends your files anywhere.</div>
+    </div>`;
+  $('#pick').onclick = async ()=>{
+    try {
+      if(remembered){ const p=await remembered.requestPermission({mode:'readwrite'}); if(p==='granted'){ F.dir=remembered; return afterFolder(); } }
+      await pickFolder();
+    } catch(e){}
+  };
+  if(remembered) $('#other').onclick = ()=>pickFolder();
+}
+async function pickFolder(){ const h=await window.showDirectoryPicker({mode:'readwrite'}); F.dir=h; try{ await idbSet('dir',h); }catch(e){} afterFolder(); }
+async function afterFolder(){
+  try { F.picker = await listPackages(); }
+  catch(e){ $('#app').innerHTML='<div class="gatepad"><p>Could not read that folder. <button class="linkbtn" onclick="showFolderGate(null)">Try another</button></p></div>'; return; }
+  if(F.wantPkg && F.picker.some(p=>p.pkg===F.wantPkg)) return loadPkg(F.wantPkg);
+  renderPicker();
+}
+function backToPicker(){ F.pkg=null; F.review=null; renderPicker(); }
+function renderPicker(){
+  const list=F.picker||[];
+  if(!list.length){ $('#app').innerHTML='<div class="gatepad"><h2>No reviews found</h2><p>This folder has no review packages yet. When an agent prepares one, it appears here. <button class="linkbtn" onclick="pickFolder()">Choose a different folder</button></p></div>'; return; }
+  $('#app').innerHTML='<div id="picker"><h2>Document reviews</h2><table><thead><tr><th>Review</th><th>Documents</th><th>Pending</th><th></th></tr></thead><tbody>'+
+    list.map(p=>`<tr onclick="loadPkg('${p.pkg}')"><td><b>${esc(p.name)}</b></td><td>${p.docs}</td><td>${p.pending} / ${p.flags}</td><td>Open &rsaquo;</td></tr>`).join('')+
+    '</tbody></table><p style="color:var(--muted);font-size:12px;margin-top:14px">Files stay on this PC â€” nothing is uploaded.</p></div>';
+}
+async function loadPkg(pkg){
+  F.pkg=pkg;
+  try { F.review=await loadReview(pkg); } catch(e){ flash('Could not open review'); return; }
+  F.di=0; F.fi=0;
+  const d=(F.review.documents||[]).findIndex(d=>(d.flags||[]).some(f=>f.status==='pending'));
+  if(d>=0){ F.di=d; const f=F.review.documents[d].flags.findIndex(f=>f.status==='pending'); F.fi=Math.max(0,f); }
+  render();
+}
+function curDoc(){ return F.review.documents[F.di]; }
+function curFlags(){ return curDoc().flags||[]; }
+function curFlag(){ return curFlags()[F.fi]; }
+function counts(){ let flags=0,pending=0; F.review.documents.forEach(d=>(d.flags||[]).forEach(f=>{flags++; if(f.status==='pending')pending++;})); return {flags,pending,done:flags-pending}; }
+
+function render(){
+  const c=counts(); const pct=c.flags?Math.round(c.done/c.flags*100):0;
+  $('#app').innerHTML = `
+   <header>
+     <span class="title">ðŸ“„ ${esc(F.review.name)}</span>
+     <span class="pill" onclick="backToPicker()">All reviews</span>
+     <span class="prog"><span>${c.done} / ${c.flags} reviewed</span><span class="bar"><i style="width:${pct}%"></i></span></span>
+   </header>
+   <main>
+     <div class="col docs">${renderDocs()}</div>
+     <div class="col doc"><div class="docwrap" id="docwrap">${renderDocBody()}</div></div>
+     <div class="col detail">${renderDetail()}</div>
+   </main>
+   <footer>
+     <button class="navbtn" onclick="stepDoc(-1)" ${F.di<=0?'disabled':''}>&#9664; Prev doc</button>
+     <span>Document ${F.di+1} of ${F.review.documents.length}</span>
+     <button class="navbtn" onclick="stepDoc(1)" ${F.di>=F.review.documents.length-1?'disabled':''}>Next doc &#9654;</button>
+     <span class="spacer"></span>
+     <span>Keys: <span class="kbd">&larr;</span> <span class="kbd">&rarr;</span> flags &middot; <span class="kbd">A</span> accept &middot; <span class="kbd">R</span> reject &middot; <span class="kbd">C</span> comment</span>
+   </footer>`;
+  const cur=$('#docwrap mark.cur'); if(cur) cur.scrollIntoView({block:'center'});
+}
+function renderDocs(){
+  const items=F.review.documents.map((d,i)=>{
+    const fs=d.flags||[];
+    const pips=fs.map(f=>({pending:'â—',accepted:'âœ“',rejected:'âœ—',commented:'âœŽ'}[f.status]||'â—')).join(' ');
+    return `<li class="${i===F.di?'cur':''}" onclick="gotoDoc(${i})"><span class="dt">${esc(d.title)}</span><span class="pips">${pips||'â€”'}</span></li>`;
+  }).join('');
+  return `<h3>Documents (${F.di+1}/${F.review.documents.length})</h3><ul class="doclist">${items}</ul>
+    <div class="legend"><b>Flags</b><br>
+      <span style="color:var(--editb)">â–</span> Edit (agent) &nbsp; <span style="color:var(--cpb)">â–</span> Counterparty<br>
+      <span style="color:var(--hlb)">â–</span> Highlight / query<br><br>
+      â— pending &nbsp; âœ“ accepted<br>âœ— rejected &nbsp; âœŽ w/ comment</div>`;
+}
+function renderDocBody(){
+  const d=curDoc(); const flags=curFlags(); const byBlock={};
+  flags.forEach((f,idx)=>{ (byBlock[f.blockId]=byBlock[f.blockId]||[]).push({f,idx}); });
+  const html=(d.blocks||[]).map(b=>{
+    let text=esc(b.text); const bf=byBlock[b.id]; let flaggedClass='';
+    if(bf){ flaggedClass=' flagged';
+      bf.forEach(({f,idx})=>{
+        const cls=`flag ${f.type} ${idx===F.fi?'cur':''} done-${f.status!=='pending'?f.status:''}`.trim();
+        if(f.quote && text.includes(esc(f.quote))){ text=text.replace(esc(f.quote), `<mark class="${cls}" onclick="gotoFlag(${idx})">${esc(f.quote)}</mark>`); }
+        else { text += ` <span class="pill" onclick="gotoFlag(${idx})">âš‘ flag ${idx+1}</span>`; }
+      });
+    }
+    const bstyle=bf?bf[0].f.type:'';
+    const border=bf?`border-left-color:var(--${bstyle==='counterparty'?'cpb':bstyle==='highlight'?'hlb':'editb'})`:'';
+    return `<p class="blk ${b.style||'normal'}${flaggedClass}" style="${border}">${text}</p>`;
+  }).join('');
+  return `<h1 class="docname">${esc(d.title)} &nbsp;<span style="color:var(--muted);font-weight:400;font-size:13px">â€” ${flags.length} flag(s)</span></h1>${html||'<i>(no content)</i>'}`;
+}
+function renderDetail(){
+  const flags=curFlags();
+  if(!flags.length) return `<div class="box"><h3>No flags</h3><p style="color:var(--muted)">Nothing flagged here. Use <b>Next doc</b>.</p></div>`;
+  const f=curFlag();
+  const labels=f.type==='highlight'?{a:'âœ“ Looks right',r:'âœ— No â€” change it',c:'âœŽ Respond with instruction'}:{a:'âœ“ Accept',r:'âœ— Reject',c:'âœŽ Accept with comment'};
+  const typeName={edit:'Edit (agent redline)',highlight:'Highlight / query',counterparty:'Counterparty change'}[f.type]||f.type;
+  let ba='';
+  if(f.type==='highlight'){ ba=`<div class="kv"><div class="k">Agent's point</div><div class="note">${esc(f.note||'')}</div></div>`; }
+  else { ba=`<div class="kv"><div class="k">Change</div><div class="ba">`+(f.before?`<del>${esc(f.before)}</del>`:'')+(f.after?`<ins>${esc(f.after)}</ins>`:'')+`</div></div>`+(f.note?`<div class="kv"><div class="k">${f.type==='counterparty'?'Note':"Agent's note"}</div><div class="note">${esc(f.note)}</div></div>`:''); }
+  const st=f.status||'pending';
+  return `<div class="box">
+    <h3>Flag ${F.fi+1} of ${flags.length}</h3>
+    <div style="display:flex;gap:6px;margin-bottom:6px">
+      <button class="navbtn" onclick="stepFlag(-1)" ${F.fi<=0?'disabled':''}>&#9664;</button>
+      <button class="navbtn" onclick="stepFlag(1)" ${F.fi>=flags.length-1?'disabled':''}>&#9654;</button>
+      <span style="align-self:center;color:var(--muted)"> flag</span>
+    </div>
+    <div class="kv"><span class="badge ${f.type}">${typeName}</span>${f.author?`<span style="color:var(--muted);font-size:12px"> Â· ${esc(f.author)}</span>`:''}</div>
+    <div class="kv"><div class="k">Where</div>${esc(f.where||'â€”')}</div>
+    ${ba}
+    <div class="kv"><div class="k">Status</div><span class="status ${st}">${st.toUpperCase()}</span>${f.comment?` â€” â€œ${esc(f.comment)}â€`:''}</div>
+    <div class="actions">
+      <button class="act accept ${st==='accepted'?'sel':''}" onclick="decide('accepted')">${labels.a}</button>
+      <button class="act reject ${st==='rejected'?'sel':''}" onclick="decide('rejected')">${labels.r}</button>
+      <button class="act comment ${st==='commented'?'sel':''}" onclick="toggleComment()">${labels.c}</button>
+      <div id="cbox" style="display:${st==='commented'?'block':'none'}">
+        <textarea id="ctext" placeholder="Your comment / instructionâ€¦">${esc(f.comment||'')}</textarea>
+        <button class="navbtn" style="margin-top:6px" onclick="submitComment()">Save comment &amp; next</button>
+      </div>
+    </div>
+  </div>`;
+}
+function gotoDoc(i){ F.di=i; F.fi=0; render(); }
+function gotoFlag(i){ F.fi=i; render(); }
+function stepFlag(d){ const n=curFlags().length; if(!n)return; F.fi=Math.min(n-1,Math.max(0,F.fi+d)); render(); }
+function stepDoc(d){ const n=F.review.documents.length; F.di=Math.min(n-1,Math.max(0,F.di+d)); F.fi=0; render(); }
+function advance(){ const n=curFlags().length; if(F.fi<n-1){F.fi++; return render();} if(F.di<F.review.documents.length-1){F.di++;F.fi=0; return render();} render(); }
+function toggleComment(){ const b=$('#cbox'); b.style.display=b.style.display==='none'?'block':'none'; if(b.style.display==='block') $('#ctext').focus(); }
+async function decide(status, comment){
+  const f=curFlag(); if(!f) return;
+  f.status=status; if(comment!==undefined) f.comment=comment; else if(status!=='commented') f.comment='';
+  try { await saveReview(); } catch(e){ flash('Save failed'); return; }
+  flash(status==='accepted'?'Accepted':status==='rejected'?'Rejected':'Saved');
+  advance();
+}
+function submitComment(){ const t=$('#ctext').value.trim(); decide('commented', t); }
+document.addEventListener('keydown',e=>{
+  if(!F.review) return; if(e.target.tagName==='TEXTAREA') return;
+  if(e.key==='ArrowLeft') stepFlag(-1);
+  else if(e.key==='ArrowRight') stepFlag(1);
+  else if(e.key==='a'||e.key==='A') decide('accepted');
+  else if(e.key==='r'||e.key==='R') decide('rejected');
+  else if(e.key==='c'||e.key==='C') toggleComment();
+  else if(e.key==='[') stepDoc(-1);
+  else if(e.key===']') stepDoc(1);
+});
+boot();
+</script>
+</body>
+</html>
