@@ -210,17 +210,18 @@ function render(){
      <span class="spacer"></span>
      <span>Keys: <span class="kbd">&larr;</span> <span class="kbd">&rarr;</span> flags &middot; <span class="kbd">A</span> accept &middot; <span class="kbd">R</span> reject &middot; <span class="kbd">C</span> comment</span>
    </footer>`;
-  // Centre the document pane on the current flag. Deferred to the next frame so it runs
-  // AFTER layout (a large document isn't laid out synchronously right after innerHTML),
-  // and centred explicitly within the .col.doc scroller for deterministic behaviour.
-  requestAnimationFrame(()=>{
-    const cont = $('.col.doc');
-    const cur  = $('#docwrap mark.cur') || $('#docwrap .blk.flagged');
-    if (cont && cur) {
-      const cr = cont.getBoundingClientRect(), mr = cur.getBoundingClientRect();
-      cont.scrollTop += (mr.top - cr.top) - (cont.clientHeight/2) + (mr.height/2);
-    }
-  });
+  // Centre the document pane on the CURRENT flag. getBoundingClientRect forces layout, so this
+  // is correct even for a large document; we run it synchronously and again on the next frame
+  // as a safety net. Target the current flag's mark, else the current flag's block (#curblk) —
+  // NOT just any flagged block — so it tracks the flag you're on even if the quote wasn't found.
+  const centreOnFlag = () => {
+    const cont = $('.col.doc'); if (!cont) return;
+    const cur = $('#docwrap mark.cur') || $('#docwrap #curblk'); if (!cur) return;
+    const cr = cont.getBoundingClientRect(), mr = cur.getBoundingClientRect();
+    cont.scrollTop += (mr.top - cr.top) - (cont.clientHeight/2) + (mr.height/2);
+  };
+  centreOnFlag();
+  requestAnimationFrame(centreOnFlag);
 }
 function renderDocs(){
   const items=F.review.documents.map((d,i)=>{
@@ -248,7 +249,8 @@ function renderDocBody(){
     }
     const bstyle=bf?bf[0].f.type:'';
     const border=bf?`border-left-color:var(--${bstyle==='counterparty'?'cpb':bstyle==='highlight'?'hlb':'editb'})`:'';
-    return `<p class="blk ${b.style||'normal'}${flaggedClass}" style="${border}">${text}</p>`;
+    const isCur=bf&&bf.some(x=>x.idx===F.fi);
+    return `<p class="blk ${b.style||'normal'}${flaggedClass}"${isCur?' id="curblk"':''} style="${border}">${text}</p>`;
   }).join('');
   return `<h1 class="docname">${esc(d.title)} &nbsp;<span style="color:var(--muted);font-weight:400;font-size:13px">— ${flags.length} flag(s)</span></h1>${html||'<i>(no content)</i>'}`;
 }
