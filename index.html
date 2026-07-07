@@ -210,7 +210,17 @@ function render(){
      <span class="spacer"></span>
      <span>Keys: <span class="kbd">&larr;</span> <span class="kbd">&rarr;</span> flags &middot; <span class="kbd">A</span> accept &middot; <span class="kbd">R</span> reject &middot; <span class="kbd">C</span> comment</span>
    </footer>`;
-  const cur=$('#docwrap mark.cur'); if(cur) cur.scrollIntoView({block:'center'});
+  // Centre the document pane on the current flag. Deferred to the next frame so it runs
+  // AFTER layout (a large document isn't laid out synchronously right after innerHTML),
+  // and centred explicitly within the .col.doc scroller for deterministic behaviour.
+  requestAnimationFrame(()=>{
+    const cont = $('.col.doc');
+    const cur  = $('#docwrap mark.cur') || $('#docwrap .blk.flagged');
+    if (cont && cur) {
+      const cr = cont.getBoundingClientRect(), mr = cur.getBoundingClientRect();
+      cont.scrollTop += (mr.top - cr.top) - (cont.clientHeight/2) + (mr.height/2);
+    }
+  });
 }
 function renderDocs(){
   const items=F.review.documents.map((d,i)=>{
