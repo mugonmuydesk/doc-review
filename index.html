@@ -23,7 +23,7 @@
   .col { min-height:0; overflow:auto; background:var(--panel); }
   .col.docs { border-right:1px solid var(--line); }
   .col.detail { border-left:1px solid var(--line); }
-  .col.doc { background:var(--bg); }
+  .col.doc { background:#e6e8ec; }
   footer { display:flex; align-items:center; gap:14px; padding:7px 14px; background:var(--panel); border-top:1px solid var(--line); color:var(--muted); font-size:13px; }
   .docs h3, .detail h3 { font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:14px 12px 6px; }
   .doclist { list-style:none; margin:0; padding:0 6px; }
@@ -33,11 +33,14 @@
   .doclist .dt { font-weight:500; }
   .pips { font-size:12px; letter-spacing:1px; }
   .legend { margin:12px; font-size:12px; color:var(--muted); line-height:1.7; }
-  .docwrap { max-width:820px; margin:0 auto; padding:26px 30px 120px; }
-  .docwrap h1.docname { font-size:16px; margin:0 0 18px; padding-bottom:8px; border-bottom:1px solid var(--line); }
-  .blk { line-height:1.55; margin:0 0 10px; white-space:pre-wrap; }
-  .blk.heading1 { font-weight:700; font-size:15px; margin-top:18px; }
-  .blk.heading2 { font-weight:600; margin-top:14px; }
+  .docwrap { max-width:850px; margin:22px auto 120px; padding:57px 68px 80px; background:#fff;
+             box-shadow:0 1px 5px rgba(0,0,0,.18); border-radius:2px;
+             font-family:Calibri,Carlito,'Segoe UI',sans-serif; font-size:15px; }
+  .docwrap h1.docname { font-family:Segoe UI,system-ui,sans-serif; font-size:16px; margin:0 0 22px; padding-bottom:8px; border-bottom:1px solid var(--line); }
+  .blk { line-height:1.45; margin:0 0 11px; white-space:pre-wrap; }
+  .blk .num { display:inline-block; text-indent:0; white-space:pre; }
+  .blk.heading1 { font-weight:700; font-size:16px; margin-top:20px; }
+  .blk.heading2 { font-weight:600; margin-top:15px; }
   .blk.flagged { border-left:3px solid transparent; padding-left:10px; margin-left:-13px; }
   mark.flag { padding:1px 2px; border-radius:3px; cursor:pointer; border-bottom:2px solid transparent; }
   mark.flag.edit { background:var(--edit); border-color:var(--editb); }
@@ -59,6 +62,7 @@
   .ba { background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:8px 10px; margin:4px 0; }
   .ba del, .ba ins { display:block; }
   .note { background:#fffdf5; border:1px solid #f0e6c0; border-radius:6px; padding:10px; line-height:1.5; }
+  .decide { background:#eef4ff; border:1px solid #cdd9f0; color:#274a80; border-radius:6px; padding:8px 10px; margin:0 0 10px; font-size:12.5px; line-height:1.5; }
   .status { font-weight:600; }
   .status.accepted { color:var(--accept); } .status.rejected { color:var(--reject); }
   .status.commented { color:var(--comment); } .status.pending { color:var(--muted); }
@@ -238,6 +242,7 @@ function renderDocs(){
 function renderDocBody(){
   const d=curDoc(); const flags=curFlags(); const byBlock={};
   flags.forEach((f,idx)=>{ (byBlock[f.blockId]=byBlock[f.blockId]||[]).push({f,idx}); });
+  const PT=96/72; // Word points -> CSS px
   const html=(d.blocks||[]).map(b=>{
     let text=esc(b.text); const bf=byBlock[b.id]; let flaggedClass='';
     if(bf){ flaggedClass=' flagged';
@@ -248,9 +253,17 @@ function renderDocBody(){
       });
     }
     const bstyle=bf?bf[0].f.type:'';
-    const border=bf?`border-left-color:var(--${bstyle==='counterparty'?'cpb':bstyle==='highlight'?'hlb':'editb'})`:'';
+    let sty=bf?`border-left-color:var(--${bstyle==='counterparty'?'cpb':bstyle==='highlight'?'hlb':'editb'});`:'';
+    // Word layout: wrapped lines sit at the left indent; a hanging first line starts
+    // `hang` further left, with the auto-number filling that gap.
+    const ind=(b.indent||0)*PT, hang=(b.hang||0)*PT;
+    const ml=ind-(bf?13:0); // .flagged uses margin-left:-13px to keep text aligned under its border
+    if(ml) sty+=`margin-left:${ml}px;`;
+    if(hang) sty+=`text-indent:${-hang}px;`;
+    if(b.align) sty+=`text-align:${b.align};`;
+    const num=b.num?`<span class="num" style="${hang?`min-width:${hang}px`:'margin-right:.7em'}">${esc(b.num)}</span>`:'';
     const isCur=bf&&bf.some(x=>x.idx===F.fi);
-    return `<p class="blk ${b.style||'normal'}${flaggedClass}"${isCur?' id="curblk"':''} style="${border}">${text}</p>`;
+    return `<p class="blk ${b.style||'normal'}${flaggedClass}"${isCur?' id="curblk"':''} style="${sty}">${num}${text}</p>`;
   }).join('');
   return `<h1 class="docname">${esc(d.title)} &nbsp;<span style="color:var(--muted);font-weight:400;font-size:13px">— ${flags.length} flag(s)</span></h1>${html||'<i>(no content)</i>'}`;
 }
@@ -258,11 +271,24 @@ function renderDetail(){
   const flags=curFlags();
   if(!flags.length) return `<div class="box"><h3>No flags</h3><p style="color:var(--muted)">Nothing flagged here. Use <b>Next doc</b>.</p></div>`;
   const f=curFlag();
-  const labels=f.type==='highlight'?{a:'✓ Looks right',r:'✗ No — change it',c:'✎ Respond with instruction'}:{a:'✓ Accept',r:'✗ Reject',c:'✎ Accept with comment'};
-  const typeName={edit:'Edit (agent redline)',highlight:'Highlight / query',counterparty:'Counterparty change'}[f.type]||f.type;
+  const DEFAULTS={
+    edit:        {decide:"You are deciding Claude's proposed edit, shown below.",
+                  a:"✓ Accept Claude's edit", r:"✗ Reject Claude's edit", c:'✎ Accept with comment'},
+    counterparty:{decide:`You are deciding the counterparty's amendment${f.author?' by '+f.author:''} — not Claude's note.`,
+                  a:'✓ Accept their change', r:'✗ Reject their change', c:'✎ Accept with comment'},
+    highlight:   {decide:'Nothing has been changed — you are responding to the point below.',
+                  a:'✓ Agree / looks right', r:'✗ Disagree — leave as is', c:'✎ Respond with instruction'}
+  };
+  const D=DEFAULTS[f.type]||DEFAULTS.edit;
+  const labels=Object.assign({a:D.a,r:D.r,c:D.c}, f.labels||{});
+  const typeName={edit:"Claude's edit",highlight:'Query / point',counterparty:'Counterparty change'}[f.type]||f.type;
   let ba='';
-  if(f.type==='highlight'){ ba=`<div class="kv"><div class="k">Agent's point</div><div class="note">${esc(f.note||'')}</div></div>`; }
-  else { ba=`<div class="kv"><div class="k">Change</div><div class="ba">`+(f.before?`<del>${esc(f.before)}</del>`:'')+(f.after?`<ins>${esc(f.after)}</ins>`:'')+`</div></div>`+(f.note?`<div class="kv"><div class="k">${f.type==='counterparty'?'Note':"Agent's note"}</div><div class="note">${esc(f.note)}</div></div>`:''); }
+  if(f.type==='highlight'){ ba=`<div class="kv"><div class="k">Claude's point</div><div class="note">${esc(f.note||'')}</div></div>`; }
+  else {
+    const chgLabel=f.type==='counterparty'?"Their amendment":"Claude's proposed edit";
+    const noteLabel=f.type==='counterparty'?"Claude's view (advice only — the buttons decide their amendment)":"Why";
+    ba=`<div class="kv"><div class="k">${chgLabel}</div><div class="ba">`+(f.before?`<del>${esc(f.before)}</del>`:'')+(f.after?`<ins>${esc(f.after)}</ins>`:'')+`</div></div>`+(f.note?`<div class="kv"><div class="k">${noteLabel}</div><div class="note">${esc(f.note)}</div></div>`:'');
+  }
   const st=f.status||'pending';
   return `<div class="box">
     <h3>Flag ${F.fi+1} of ${flags.length}</h3>
@@ -272,6 +298,7 @@ function renderDetail(){
       <span style="align-self:center;color:var(--muted)"> flag</span>
     </div>
     <div class="kv"><span class="badge ${f.type}">${typeName}</span>${f.author?`<span style="color:var(--muted);font-size:12px"> · ${esc(f.author)}</span>`:''}</div>
+    <div class="decide">${esc(f.decide||D.decide)}</div>
     <div class="kv"><div class="k">Where</div>${esc(f.where||'—')}</div>
     ${ba}
     <div class="kv"><div class="k">Status</div><span class="status ${st}">${st.toUpperCase()}</span>${f.comment?` — “${esc(f.comment)}”`:''}</div>
